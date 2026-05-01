@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,11 +12,11 @@ requires-python = ">=3.12"
 [tool.ruff]
 line-length = 79
 target-version = "py312"
-exclude = [".venv", "migrations"]
+exclude = [".venv", "migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-ignore = ["E501"]
+ignore = []
 
 [tool.ruff.format]
 quote-style = "double"
