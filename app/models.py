@@ -16,6 +16,6 @@ class Product(db.Model):
 
     def __repr__(self) -> str:
         return (
-            f"Product(id={self.id}, name={self.name}, "
-            f"price={self.price}, description={self.description})"
+            f"Product(id={self.id!r}, name={self.name!r}, "
+            f"price={self.price!r}"
         )

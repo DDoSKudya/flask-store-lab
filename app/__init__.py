@@ -29,6 +29,6 @@ def register_blueprints(app: Flask) -> None:
 def create_app() -> Flask:
     app: Flask = Flask(import_name=__name__)
     configure_app(app)
-    register_blueprints(app)
     configure_database(app)
+    register_blueprints(app)
     return app
