@@ -6,7 +6,10 @@ from app.routes import main_bp
 
 
 def configure_app(app: Flask) -> None:
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+    secret_key: str | None = os.getenv("SECRET_KEY")
+    if secret_key is None:
+        raise ValueError("SECRET_KEY is not set")
+    app.config["SECRET_KEY"] = secret_key
 
 
 def register_blueprints(app: Flask) -> None:
