@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 
-from app.messages import Messages
-
 from dotenv import load_dotenv
+
+from app.messages import Messages
 
 load_dotenv()
 
