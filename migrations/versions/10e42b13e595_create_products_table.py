@@ -1,7 +1,7 @@
 """create products table
 
 Revision ID: 10e42b13e595
-Revises: 
+Revises:
 Create Date: 2026-05-01 17:30:59.759120
 
 """
