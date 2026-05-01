@@ -1,10 +1,13 @@
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from app import db, models  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from app.config import get_database_url
+
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

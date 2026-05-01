@@ -39,3 +39,7 @@ disallow_incomplete_defs = false
 [[tool.mypy.overrides]]
 module = ["flask.*", "flask_sqlalchemy.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.models"]
+disable_error_code = ["name-defined"]

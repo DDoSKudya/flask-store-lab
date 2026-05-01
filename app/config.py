@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import os
 
-from dotenv import load_dotenv
-
 from app.messages import DATABASE_URL_NOT_SET, SECRET_KEY_NOT_SET
 
-load_dotenv()
+__all__ = ["get_secret_key", "get_database_url"]
 
 
 def get_secret_key() -> str:
