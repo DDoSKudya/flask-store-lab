@@ -51,8 +51,15 @@
                 <div class="row justify-content-center mb-4">
                     <div class="col-lg-10 col-xl-9">
                         {% for category, message in messages %}
+                            {% set flash_class = {
+                                "success": "success",
+                                "info": "info",
+                                "warning": "warning",
+                                "error": "danger",
+                                "danger": "danger",
+                            }.get(category, "secondary") %}
                             <div
-                                class="alert alert-{{ 'success' if category == 'success' else 'info' }} alert-dismissible fade show mb-3 text-start"
+                                class="alert alert-{{ flash_class }} alert-dismissible fade show mb-3 text-start"
                                 role="alert"
                             >
                                 {{ message }}

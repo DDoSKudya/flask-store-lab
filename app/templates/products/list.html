@@ -46,6 +46,7 @@
                                             {% if product.description %}
                                                 <div
                                                     class="text-secondary small mt-1 text-truncate"
+                                                    title="{{ product.description }}"
                                                     style="max-width: 32rem"
                                                 >
                                                     {{ product.description }}
@@ -62,12 +63,19 @@
                                             >
                                                 View
                                             </a>
-                                            <a
-                                                class="btn btn-outline-danger btn-sm ms-1"
-                                                href="{{ url_for('main.delete_product', product_id=product.id) }}"
+                                            <form
+                                                method="post"
+                                                action="{{ url_for('main.delete_product', product_id=product.id) }}"
+                                                class="d-inline ms-1"
+                                                onsubmit="return confirm('Delete this product?');"
                                             >
-                                                Delete
-                                            </a>
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-outline-danger btn-sm"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 {% endfor %}
