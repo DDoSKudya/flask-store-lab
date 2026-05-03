@@ -8,6 +8,7 @@
         href="{{ url_for('static', filename='css/bootstrap.min.css') }}"
         rel="stylesheet"
     />
+    <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet" />
 </head>
 <body class="bg-light">
     <nav
@@ -89,6 +90,7 @@
         {% endblock %}
     </main>
 
-    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
