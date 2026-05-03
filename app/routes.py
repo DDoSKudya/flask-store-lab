@@ -1,17 +1,19 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from flask import (
     Blueprint,
+    current_app,
     flash,
     redirect,
     render_template,
     request,
     url_for,
 )
+from flask.typing import ResponseReturnValue
 from pydantic import ValidationError
 from pydantic_core import ErrorDetails
 from sqlalchemy.exc import SQLAlchemyError
-from werkzeug import Response as WerkzeugResponse
 
 from app.extensions import db
 from app.models import Product
@@ -21,6 +23,21 @@ main_bp: Blueprint = Blueprint(name="main", import_name=__name__)
 
 _PRODUCT_NEW_TEMPLATE = "products/new.html"
 _PRODUCT_NEW_TITLE = "New product"
+
+
+@dataclass(slots=True)
+class ProductFormData:
+    name: str
+    price: str
+    description: str
+
+    @property
+    def payload(self) -> dict[str, str | None]:
+        return {
+            "name": self.name,
+            "price": self.price,
+            "description": self.description or None,
+        }
 
 
 def _render_new_product(
@@ -40,37 +57,26 @@ def _render_new_product(
     )
 
 
-def _read_product_form() -> tuple[str, str, str, dict[str, str | None]]:
-    form_name: str = request.form.get("name", "").strip()
-    form_price: str = request.form.get("price", "").strip()
-    form_description: str = request.form.get("description", "").strip()
-    payload: dict[str, str | None] = {
-        "name": form_name,
-        "price": form_price,
-        "description": form_description or None,
-    }
-    return form_name, form_price, form_description, payload
-
-
-def _persist_product(data: ProductCreate) -> list[ErrorDetails] | None:
-    product: Product = Product(
-        name=data.name,  # pyright: ignore[reportCallIssue]
-        price=data.price,  # pyright: ignore[reportCallIssue]
-        description=data.description,  # pyright: ignore[reportCallIssue]
+def _read_product_form() -> ProductFormData:
+    return ProductFormData(
+        name=request.form.get("name", "").strip(),
+        price=request.form.get("price", "").strip(),
+        description=request.form.get("description", "").strip(),
     )
+
+
+def _persist_product(data: ProductCreate) -> str | None:
+    product: Product = Product()
+    product.name = data.name
+    product.price = data.price
+    product.description = data.description
     db.session.add(instance=product)
     try:
         db.session.commit()
     except SQLAlchemyError:
         db.session.rollback()
-        msg = "Could not save the product. Please try again."
-        db_error: ErrorDetails = {
-            "type": "database_error",
-            "loc": (),
-            "msg": msg,
-            "input": None,
-        }
-        return [db_error]
+        current_app.logger.exception("Error while saving product to database")
+        return "Could not save the product. Please try again."
     return None
 
 
@@ -82,12 +88,12 @@ def index() -> str:
 
 
 @main_bp.route(rule="/health", methods=["GET"])
-def health() -> WerkzeugResponse:
-    return WerkzeugResponse(status=200, response="OK")
+def health() -> ResponseReturnValue:
+    return "OK", 200
 
 
 @main_bp.route("/products/new", methods=["GET", "POST"])
-def new_product() -> str | WerkzeugResponse:
+def new_product() -> ResponseReturnValue:
     if request.method != "POST":
         return _render_new_product(
             form_name="",
@@ -96,20 +102,28 @@ def new_product() -> str | WerkzeugResponse:
             errors=None,
         )
 
-    form_name, form_price, form_description, payload = _read_product_form()
+    form = _read_product_form()
 
     try:
-        data: ProductCreate = ProductCreate.model_validate(payload)
+        data: ProductCreate = ProductCreate.model_validate(form.payload)
     except ValidationError as exc:
         return _render_new_product(
-            form_name=form_name,
-            form_price=form_price,
-            form_description=form_description,
+            form_name=form.name,
+            form_price=form.price,
+            form_description=form.description,
             errors=exc.errors(),
         )
 
-    db_errors: list[ErrorDetails] | None = _persist_product(data)
-    if db_errors is not None:
+    db_error_msg = _persist_product(data)
+    if db_error_msg is not None:
+        db_errors: list[ErrorDetails] = [
+            {
+                "type": "database_error",
+                "loc": (),
+                "msg": db_error_msg,
+                "input": None,
+            }
+        ]
         return _render_new_product(
             form_name=data.name,
             form_price=str(data.price),

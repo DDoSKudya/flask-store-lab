@@ -1,4 +1,6 @@
 from logging.config import fileConfig
+from pathlib import Path
+from urllib.parse import urlsplit
 
 from alembic import context
 from dotenv import load_dotenv
@@ -24,7 +26,27 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = db.metadata
-config.set_main_option("sqlalchemy.url", get_database_url())
+
+
+def _ensure_sqlite_parent_dir(database_url: str) -> None:
+    sqlite_prefix = "sqlite:///"
+    if not database_url.startswith(sqlite_prefix):
+        return
+
+    sqlite_rest = database_url.removeprefix(sqlite_prefix)
+    sqlite_parts = urlsplit(url=sqlite_rest)
+    sqlite_path = sqlite_parts.path
+    is_memory = sqlite_path.startswith(":memory:")
+    has_windows_drive = len(sqlite_path) > 1 and sqlite_path[1] == ":"
+    if is_memory or has_windows_drive:
+        return
+
+    Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
+
+
+database_url = get_database_url()
+_ensure_sqlite_parent_dir(database_url=database_url)
+config.set_main_option("sqlalchemy.url", database_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
