@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from typing import TypedDict
 
 from flask import (
     Blueprint,
@@ -25,44 +25,35 @@ _PRODUCT_NEW_TEMPLATE = "products/new.html"
 _PRODUCT_NEW_TITLE = "New product"
 
 
-@dataclass(slots=True)
-class ProductFormData:
+class ProductFormData(TypedDict):
     name: str
     price: str
     description: str
 
-    @property
-    def payload(self) -> dict[str, str | None]:
-        return {
-            "name": self.name,
-            "price": self.price,
-            "description": self.description or None,
-        }
-
 
 def _render_new_product(
     *,
-    form_name: str,
-    form_price: str,
-    form_description: str,
+    form_data: ProductFormData,
     errors: Sequence[ErrorDetails] | None,
+    db_error: str | None = None,
 ) -> str:
     return render_template(
         _PRODUCT_NEW_TEMPLATE,
         page_title=_PRODUCT_NEW_TITLE,
-        form_name=form_name,
-        form_price=form_price,
-        form_description=form_description,
+        form_name=form_data["name"],
+        form_price=form_data["price"],
+        form_description=form_data["description"],
         errors=errors,
+        db_error=db_error,
     )
 
 
 def _read_product_form() -> ProductFormData:
-    return ProductFormData(
-        name=request.form.get("name", "").strip(),
-        price=request.form.get("price", "").strip(),
-        description=request.form.get("description", "").strip(),
-    )
+    return {
+        "name": request.form.get("name", "").strip(),
+        "price": request.form.get("price", "").strip(),
+        "description": request.form.get("description", "").strip(),
+    }
 
 
 def _persist_product(data: ProductCreate) -> str | None:
@@ -96,39 +87,36 @@ def health() -> ResponseReturnValue:
 def new_product() -> ResponseReturnValue:
     if request.method != "POST":
         return _render_new_product(
-            form_name="",
-            form_price="",
-            form_description="",
+            form_data={"name": "", "price": "", "description": ""},
             errors=None,
         )
 
-    form = _read_product_form()
+    form_data = _read_product_form()
+    payload: dict[str, str | None] = {
+        "name": form_data["name"],
+        "price": form_data["price"],
+        "description": form_data["description"] or None,
+    }
 
     try:
-        data: ProductCreate = ProductCreate.model_validate(form.payload)
+        data: ProductCreate = ProductCreate.model_validate(payload)
     except ValidationError as exc:
         return _render_new_product(
-            form_name=form.name,
-            form_price=form.price,
-            form_description=form.description,
+            form_data=form_data,
             errors=exc.errors(),
         )
 
     db_error_msg = _persist_product(data)
     if db_error_msg is not None:
-        db_errors: list[ErrorDetails] = [
-            {
-                "type": "database_error",
-                "loc": (),
-                "msg": db_error_msg,
-                "input": None,
-            }
-        ]
+        validated_form_data: ProductFormData = {
+            "name": data.name,
+            "price": str(data.price),
+            "description": data.description or "",
+        }
         return _render_new_product(
-            form_name=data.name,
-            form_price=str(data.price),
-            form_description=data.description or "",
-            errors=db_errors,
+            form_data=validated_form_data,
+            errors=None,
+            db_error=db_error_msg,
         )
 
     flash(message="Product created.", category="success")
