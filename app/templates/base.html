@@ -8,12 +8,24 @@
         <header>
             <h1>flask-store-lab</h1>
             <nav>
-                <a href="/">Home</a>
+                <a href="{{ url_for('main.index') }}">Home</a>
+                <a href="{{ url_for('main.new_product') }}">New product</a>
             </nav>
         </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="flash flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
         <main>
             {% block content %}
-            <p>App skeleton is running.</p>
+                <p>App skeleton is running.</p>
             {% endblock %}
         </main>
     </body>

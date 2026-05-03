@@ -4,8 +4,9 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from app import db, models  # noqa: F401  # pyright: ignore[reportUnusedImport]
+import app.models  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from app.config import get_database_url
+from app.extensions import db
 
 load_dotenv()
 

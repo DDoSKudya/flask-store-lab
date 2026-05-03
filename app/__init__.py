@@ -1,12 +1,10 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 
 from app.config import get_database_url, get_secret_key
+from app.extensions import db
 from app.routes import main_bp
 
 __all__ = ["db", "create_app"]
-
-db: SQLAlchemy = SQLAlchemy()
 
 
 def configure_secret_key(app: Flask) -> None:

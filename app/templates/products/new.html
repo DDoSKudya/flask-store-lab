@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>New product</h2>
+
+    {% if errors %}
+        <div class="form-errors" role="alert">
+            <p><strong>Please fix the following:</strong></p>
+            <ul>
+                {% for err in errors %}
+                    <li>
+                        {% if err.get("loc") %}
+                            <strong>
+                                {% for part in err.get("loc", ()) %}
+                                    {{ part }}{% if not loop.last %}.{% endif %}
+                                {% endfor %}
+                            </strong>:
+                        {% endif %}
+                        {{ err.get("msg", "Invalid value.") }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        <div>
+            <label for="name">Name</label>
+            <input
+                id="name"
+                name="name"
+                type="text"
+                value="{{ form_name | default('', true) }}"
+                maxlength="100"
+                autocomplete="off"
+            />
+        </div>
+
+        <div>
+            <label for="price">Price</label>
+            <input
+                id="price"
+                name="price"
+                type="text"
+                inputmode="decimal"
+                value="{{ form_price | default('', true) }}"
+                placeholder="e.g. 19.99"
+                autocomplete="off"
+            />
+        </div>
+
+        <div>
+            <label for="description">Description (optional)</label>
+            <textarea
+                id="description"
+                name="description"
+                rows="4"
+                maxlength="1000"
+            >{{ form_description | default('', true) }}</textarea>
+        </div>
+
+        <button type="submit">Create</button>
+    </form>
+{% endblock %}
