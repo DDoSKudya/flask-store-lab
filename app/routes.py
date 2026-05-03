@@ -121,3 +121,34 @@ def new_product() -> ResponseReturnValue:
 
     flash(message="Product created.", category="success")
     return redirect(location=url_for(endpoint="main.index"))
+
+
+@main_bp.route(rule="/products", methods=["GET"])
+def list_products() -> ResponseReturnValue:
+    products: Sequence[Product] = Product.query.order_by(
+        Product.id.desc()
+    ).all()
+    return render_template(
+        template_name_or_list="products/list.html",
+        page_title="Products",
+        products=products,
+    )
+
+
+@main_bp.route(rule="/products/<int:product_id>", methods=["GET"])
+def product_detail(product_id: int) -> ResponseReturnValue:
+    product: Product = db.get_or_404(entity=Product, ident=product_id)
+    return render_template(
+        template_name_or_list="products/detail.html",
+        page_title=product.name,
+        product=product,
+    )
+
+
+@main_bp.route(rule="/products/<int:product_id>/delete", methods=["GET"])
+def delete_product(product_id: int) -> ResponseReturnValue:
+    product: Product = db.get_or_404(entity=Product, ident=product_id)
+    db.session.delete(instance=product)
+    db.session.commit()
+    flash(message="Product deleted.", category="success")
+    return redirect(location=url_for(endpoint="main.list_products"))
