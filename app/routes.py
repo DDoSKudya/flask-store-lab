@@ -1,13 +1,17 @@
+import hmac
+import secrets
 from collections.abc import Sequence
 from typing import TypedDict
 
 from flask import (
     Blueprint,
+    abort,
     current_app,
     flash,
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from flask.typing import ResponseReturnValue
@@ -23,12 +27,31 @@ main_bp: Blueprint = Blueprint(name="main", import_name=__name__)
 
 _PRODUCT_NEW_TEMPLATE = "products/new.html"
 _PRODUCT_NEW_TITLE = "New product"
+_CSRF_TOKEN_KEY = "csrf_token"  # noqa: S105
 
 
 class ProductFormData(TypedDict):
     name: str
     price: str
     description: str
+
+
+def _get_csrf_token() -> str:
+    token = session.get(_CSRF_TOKEN_KEY)
+    if isinstance(token, str) and token:
+        return token
+    token = secrets.token_urlsafe(32)
+    session[_CSRF_TOKEN_KEY] = token
+    return token
+
+
+def _is_valid_csrf_token(value: str | None) -> bool:
+    session_token = session.get(_CSRF_TOKEN_KEY)
+    return (
+        isinstance(value, str)
+        and isinstance(session_token, str)
+        and hmac.compare_digest(value, session_token)
+    )
 
 
 def _render_new_product(
@@ -120,4 +143,38 @@ def new_product() -> ResponseReturnValue:
         )
 
     flash(message="Product created.", category="success")
-    return redirect(location=url_for(endpoint="main.index"))
+    return redirect(location=url_for(endpoint="main.list_products"))
+
+
+@main_bp.route(rule="/products", methods=["GET"])
+def list_products() -> ResponseReturnValue:
+    products: Sequence[Product] = Product.query.order_by(
+        Product.id.desc()
+    ).all()
+    return render_template(
+        template_name_or_list="products/list.html",
+        page_title="Products",
+        products=products,
+        csrf_token=_get_csrf_token(),
+    )
+
+
+@main_bp.route(rule="/products/<int:product_id>", methods=["GET"])
+def product_detail(product_id: int) -> ResponseReturnValue:
+    product: Product = db.get_or_404(entity=Product, ident=product_id)
+    return render_template(
+        template_name_or_list="products/detail.html",
+        page_title=product.name,
+        product=product,
+    )
+
+
+@main_bp.route(rule="/products/<int:product_id>/delete", methods=["POST"])
+def delete_product(product_id: int) -> ResponseReturnValue:
+    if not _is_valid_csrf_token(value=request.form.get("csrf_token")):
+        abort(400)
+    product: Product = db.get_or_404(entity=Product, ident=product_id)
+    db.session.delete(instance=product)
+    db.session.commit()
+    flash(message="Product deleted.", category="success")
+    return redirect(location=url_for(endpoint="main.list_products"))

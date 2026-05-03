@@ -1,3 +1,5 @@
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
 from flask import Flask
 
 from app.config import (
@@ -26,6 +28,20 @@ def configure_app(app: Flask) -> None:
     configure_secret_key(app)
 
 
+def format_price(value: object) -> str:
+    try:
+        amount = Decimal(str(value)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except (InvalidOperation, ValueError):
+        return str(value)
+    return f"{amount:,.2f}"
+
+
+def configure_jinja(app: Flask) -> None:
+    app.jinja_env.filters["price"] = format_price
+
+
 def register_blueprints(app: Flask) -> None:
     app.register_blueprint(blueprint=main_bp)
 
@@ -34,5 +50,6 @@ def create_app() -> Flask:
     app: Flask = Flask(import_name=__name__)
     configure_app(app)
     configure_database(app)
+    configure_jinja(app)
     register_blueprints(app)
     return app

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-lg-5 text-start">
+                    <h1 class="h3 mb-3 text-break">{{ product.name }}</h1>
+                    <p class="mb-2"><strong>Price:</strong> ${{ product.price | price }}</p>
+                    <p class="mb-4">
+                        <strong>Description:</strong>
+                        {{ product.description or "No description." }}
+                    </p>
+                    <a
+                        class="btn btn-outline-secondary"
+                        href="{{ url_for('main.list_products') }}"
+                    >
+                        Back to products
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}

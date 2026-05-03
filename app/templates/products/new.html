@@ -1,60 +1,107 @@
-{% extends "base.html" %} {% block content %}
-<h2>New product</h2>
+{% extends "base.html" %}
 
-{% if errors %}
-<div class="form-errors" role="alert">
-    <p><strong>Please fix the following:</strong></p>
-    <ul>
-        {% for err in errors %}
-        <li>
-            {% if err.get("loc") %}
-            <strong>
-                {% for part in err.get("loc", ()) %} {{ part }}{% if not
-                loop.last %}.{% endif %} {% endfor %} </strong
-            >: {% endif %} {{ err.get("msg", "Invalid value.") }}
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %} {% if db_error %}
-<div class="form-errors" role="alert">
-    <p>{{ db_error }}</p>
-</div>
-{% endif %}
+{% block content %}
+    <section class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <div class="mb-4 text-start">
+                <h1 class="h2 mb-1">Create a new product</h1>
+                <p class="text-secondary mb-0">
+                    Add a product name, price, and optional description.
+                </p>
+            </div>
 
-<form method="post" novalidate>
-    <div>
-        <label for="name">Name</label>
-        <input
-            id="name"
-            name="name"
-            type="text"
-            value="{{ form_name | default('', true) }}"
-            maxlength="100"
-            autocomplete="off"
-        />
-    </div>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-lg-5">
+                    {% if errors %}
+                        <div class="alert alert-danger mb-4 text-start" role="alert">
+                            <h2 class="h6 alert-heading">Please fix the following:</h2>
+                            <ul class="mb-0">
+                                {% for err in errors %}
+                                    <li>
+                                        {% if err.get("loc") %}
+                                            <strong>
+                                                {% for part in err.get("loc", ()) %}
+                                                    {{ part }}{% if not loop.last %}.{% endif %}
+                                                {% endfor %}
+                                            </strong>:
+                                        {% endif %}
+                                        {{ err.get("msg", "Invalid value.") }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
 
-    <div>
-        <label for="price">Price</label>
-        <input
-            id="price"
-            name="price"
-            type="text"
-            inputmode="decimal"
-            value="{{ form_price | default('', true) }}"
-            placeholder="e.g. 19.99"
-            autocomplete="off"
-        />
-    </div>
+                    {% if db_error %}
+                        <div class="alert alert-danger mb-4 text-start" role="alert">
+                            {{ db_error }}
+                        </div>
+                    {% endif %}
 
-    <div>
-        <label for="description">Description (optional)</label>
-        <textarea id="description" name="description" rows="4" maxlength="1000">
-{{ form_description | default('', true) }}</textarea
-        >
-    </div>
+                    <form method="post" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label" for="name">Name</label>
+                            <input
+                                class="form-control"
+                                id="name"
+                                name="name"
+                                type="text"
+                                value="{{ form_name | default('', true) }}"
+                                maxlength="100"
+                                autocomplete="off"
+                                placeholder="Coffee beans"
+                            />
+                        </div>
 
-    <button type="submit">Create</button>
-</form>
+                        <div class="mb-3">
+                            <label class="form-label" for="price">Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input
+                                    class="form-control"
+                                    id="price"
+                                    name="price"
+                                    type="text"
+                                    inputmode="decimal"
+                                    value="{{ form_price | default('', true) }}"
+                                    placeholder="19.99"
+                                    autocomplete="off"
+                                />
+                            </div>
+                            <div class="form-text">
+                                Use a positive number, for example 19.99.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" for="description">
+                                Description
+                                <span class="text-secondary">(optional)</span>
+                            </label>
+                            <textarea
+                                class="form-control"
+                                id="description"
+                                name="description"
+                                rows="4"
+                                maxlength="1000"
+                                placeholder="Short product description"
+                            >{{ form_description | default('', true) }}</textarea>
+                        </div>
+
+                        <div class="d-flex flex-column flex-sm-row gap-2">
+                            <button class="btn btn-primary" type="submit">
+                                Create product
+                            </button>
+                            <a
+                                class="btn btn-outline-secondary"
+                                href="{{ url_for('main.list_products') }}"
+                            >
+                                Back to products
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
 {% endblock %}
