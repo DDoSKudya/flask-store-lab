@@ -1,12 +1,14 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 
-from app.config import get_database_url, get_secret_key
+from app.config import (
+    ensure_sqlite_parent_dir,
+    get_database_url,
+    get_secret_key,
+)
+from app.extensions import db
 from app.routes import main_bp
 
 __all__ = ["db", "create_app"]
-
-db: SQLAlchemy = SQLAlchemy()
 
 
 def configure_secret_key(app: Flask) -> None:
@@ -14,7 +16,9 @@ def configure_secret_key(app: Flask) -> None:
 
 
 def configure_database(app: Flask) -> None:
-    app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
+    database_url = get_database_url()
+    ensure_sqlite_parent_dir(database_url=database_url)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     db.init_app(app=app)
 
 

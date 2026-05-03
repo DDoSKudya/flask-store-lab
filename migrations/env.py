@@ -4,8 +4,9 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from app import db, models  # noqa: F401  # pyright: ignore[reportUnusedImport]
-from app.config import get_database_url
+import app.models  # noqa: F401  # pyright: ignore[reportUnusedImport]
+from app.config import ensure_sqlite_parent_dir, get_database_url
+from app.extensions import db
 
 load_dotenv()
 
@@ -23,7 +24,11 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = db.metadata
-config.set_main_option("sqlalchemy.url", get_database_url())
+
+
+database_url = get_database_url()
+ensure_sqlite_parent_dir(database_url=database_url)
+config.set_main_option("sqlalchemy.url", database_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

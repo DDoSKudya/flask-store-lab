@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Mapped
 
-from app import db
+from app.extensions import db
 
 
 class Product(db.Model):
