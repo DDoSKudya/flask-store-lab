@@ -7,29 +7,21 @@ from app.config import (
 from app.extensions import db
 from app.routes import main_bp
 
-__all__ = ["db", "create_app"]
-
-
-def configure_secret_key(app: Flask) -> None:
-    app.config["SECRET_KEY"] = get_secret_key()
-
-
-def configure_database(app: Flask) -> None:
-    db.init_engine(database_url=get_database_url())
-    app.teardown_appcontext(lambda exception: db.remove_session())
-
-
-def configure_app(app: Flask) -> None:
-    configure_secret_key(app)
-
-
-def register_blueprints(app: Flask) -> None:
-    app.register_blueprint(blueprint=main_bp)
+__all__ = ["create_app"]
 
 
 def create_app() -> Flask:
     app: Flask = Flask(import_name=__name__)
-    configure_app(app)
-    configure_database(app)
-    register_blueprints(app)
+    # Configure app
+    app.config["SECRET_KEY"] = get_secret_key()
+
+    # Configure database
+    db.init_engine(database_url=get_database_url())
+
+    # Register blueprints
+    app.teardown_appcontext(lambda exception: db.remove_session())
+
+    # Register blueprints
+    app.register_blueprint(blueprint=main_bp)
+
     return app
