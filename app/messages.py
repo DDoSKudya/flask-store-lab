@@ -1,2 +1,0 @@
-SECRET_KEY_NOT_SET = "SECRET_KEY is not set"  # noqa: S105
-DATABASE_URL_NOT_SET = "DATABASE_URL is not set"
