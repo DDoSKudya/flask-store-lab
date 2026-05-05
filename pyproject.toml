@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flask-store-lab"
-version = "0.1.0"
+version = "1.0.0"
 description = "Учебный Flask-проект: каталог товаров с формами на Jinja2, валидацией через Pydantic, хранением данных в SQLite через SQLAlchemy и миграциями Alembic."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.12"
 
 [tool.ruff]
@@ -43,3 +44,12 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["app.models"]
 disable_error_code = ["name-defined"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+markers = [
+  "unit: fast unit tests",
+  "integration: integration tests with app/client/db",
+]

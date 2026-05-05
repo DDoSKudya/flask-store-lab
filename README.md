@@ -8,6 +8,7 @@
 - SQLAlchemy 2.x
 - Alembic
 - Pydantic
+- Pytest
 - uWSGI
 
 ## 1) Требования
@@ -84,7 +85,28 @@ flask --app main:app --debug run
 python main.py
 ```
 
-## 6) Запуск через uWSGI
+## 6) Тесты (pytest)
+
+Установите зависимости для разработки (в них входит pytest, см. `requirements-dev.txt`):
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Запуск всех тестов из корня репозитория:
+
+```bash
+python -m pytest
+```
+
+Только интеграционные или только юнит-тесты (маркеры заданы в `pyproject.toml`):
+
+```bash
+python -m pytest -m integration
+python -m pytest -m unit
+```
+
+## 7) Запуск через uWSGI
 
 Базовый запуск uWSGI:
 
@@ -98,7 +120,7 @@ uwsgi --http 127.0.0.1:8000 --wsgi-file main.py --callable app --master --proces
 - `--callable app` — Flask-приложение из `main.py`
 - `--http 127.0.0.1:8000` — HTTP-сокет uWSGI
 
-## 7) Быстрый чек-лист запуска с нуля
+## 8) Быстрый чек-лист запуска с нуля
 
 ```bash
 python -m venv .venv
@@ -109,3 +131,11 @@ sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$(python -c 'import secrets; print(secrets.t
 alembic upgrade head
 flask --app main:app --debug run
 ```
+
+## Лицензия
+
+Исходный код распространяется по лицензии MIT — см. файл [LICENSE](LICENSE).
+
+## История изменений
+
+Список версий и изменений — в [CHANGELOG.md](CHANGELOG.md).
