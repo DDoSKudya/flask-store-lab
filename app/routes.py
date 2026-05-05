@@ -1,8 +1,3 @@
-import hmac
-import secrets
-from collections.abc import Sequence
-from typing import TypedDict
-
 from flask import (
     Blueprint,
     abort,
@@ -11,170 +6,143 @@ from flask import (
     redirect,
     render_template,
     request,
-    session,
     url_for,
 )
 from flask.typing import ResponseReturnValue
 from pydantic import ValidationError
-from pydantic_core import ErrorDetails
-from sqlalchemy.exc import SQLAlchemyError
 
-from app.extensions import db
-from app.models import Product
 from app.schemas import ProductCreate
+from app.services.products import (
+    ProductAlreadyExistsError,
+    ProductNotFoundError,
+    ProductPersistenceError,
+    create_product,
+    get_product,
+)
+from app.services.products import (
+    delete_product as delete_product_by_id,
+)
+from app.services.products import (
+    list_products as list_products_service,
+)
 
 main_bp: Blueprint = Blueprint(name="main", import_name=__name__)
 
+_HOME_TEMPLATE = "base.html"
 _PRODUCT_NEW_TEMPLATE = "products/new.html"
+_PRODUCT_LIST_TEMPLATE = "products/list.html"
+_PRODUCT_DETAIL_TEMPLATE = "products/detail.html"
+_HOME_TITLE = "Home"
+_HEALTH_OK = "OK"
 _PRODUCT_NEW_TITLE = "New product"
-_CSRF_TOKEN_KEY = "csrf_token"  # noqa: S105
+_PRODUCT_LIST_TITLE = "Products"
+_FLASH_PRODUCT_CREATED = "Product created."
+_FLASH_PRODUCT_DELETED = "Product deleted."
+_ERROR_PRODUCT_EXISTS = "Product with this name already exists."
+_ERROR_PRODUCT_SAVE_FAILED = "Could not save the product. Please try again."
+_LOG_SAVE_PRODUCT_ERROR = "Error while saving product to database"
+_LOG_FETCH_PRODUCTS_ERROR = "Error while fetching products from database"
+_LOG_FETCH_PRODUCT_ERROR = "Error while fetching product from database"
+_LOG_DELETE_PRODUCT_ERROR = "Error while deleting product from database"
 
 
-class ProductFormData(TypedDict):
-    name: str
-    price: str
-    description: str
-
-
-def _get_csrf_token() -> str:
-    token = session.get(_CSRF_TOKEN_KEY)
-    if isinstance(token, str) and token:
-        return token
-    token = secrets.token_urlsafe(32)
-    session[_CSRF_TOKEN_KEY] = token
-    return token
-
-
-def _is_valid_csrf_token(value: str | None) -> bool:
-    session_token = session.get(_CSRF_TOKEN_KEY)
-    return (
-        isinstance(value, str)
-        and isinstance(session_token, str)
-        and hmac.compare_digest(value, session_token)
+@main_bp.route(rule="/")
+def index() -> str:
+    return render_template(
+        template_name_or_list=_HOME_TEMPLATE,
+        page_title=_HOME_TITLE,
     )
 
 
-def _render_new_product(
-    *,
-    form_data: ProductFormData,
-    errors: Sequence[ErrorDetails] | None,
-    db_error: str | None = None,
-) -> str:
+@main_bp.route(rule="/health")
+def health() -> ResponseReturnValue:
+    return _HEALTH_OK, 200
+
+
+@main_bp.route("/products/new", methods=["GET"])
+def new_product() -> ResponseReturnValue:
     return render_template(
         _PRODUCT_NEW_TEMPLATE,
         page_title=_PRODUCT_NEW_TITLE,
-        form_name=form_data["name"],
-        form_price=form_data["price"],
-        form_description=form_data["description"],
-        errors=errors,
-        db_error=db_error,
+        errors=None,
+        db_error=None,
     )
 
 
-def _read_product_form() -> ProductFormData:
-    return {
-        "name": request.form.get("name", "").strip(),
-        "price": request.form.get("price", "").strip(),
-        "description": request.form.get("description", "").strip(),
-    }
-
-
-def _persist_product(data: ProductCreate) -> str | None:
-    product: Product = Product()
-    product.name = data.name
-    product.price = data.price
-    product.description = data.description
-    db.session.add(instance=product)
+@main_bp.route("/products", methods=["POST"])
+def create_product_handler() -> ResponseReturnValue:
     try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        current_app.logger.exception("Error while saving product to database")
-        return "Could not save the product. Please try again."
-    return None
-
-
-@main_bp.route(rule="/", methods=["GET"])
-def index() -> str:
-    return render_template(
-        template_name_or_list="base.html", page_title="Home"
-    )
-
-
-@main_bp.route(rule="/health", methods=["GET"])
-def health() -> ResponseReturnValue:
-    return "OK", 200
-
-
-@main_bp.route("/products/new", methods=["GET", "POST"])
-def new_product() -> ResponseReturnValue:
-    if request.method != "POST":
-        return _render_new_product(
-            form_data={"name": "", "price": "", "description": ""},
-            errors=None,
-        )
-
-    form_data = _read_product_form()
-    payload: dict[str, str | None] = {
-        "name": form_data["name"],
-        "price": form_data["price"],
-        "description": form_data["description"] or None,
-    }
-
-    try:
-        data: ProductCreate = ProductCreate.model_validate(payload)
+        data = ProductCreate.model_validate(request.form)
     except ValidationError as exc:
-        return _render_new_product(
-            form_data=form_data,
+        return render_template(
+            _PRODUCT_NEW_TEMPLATE,
+            page_title=_PRODUCT_NEW_TITLE,
             errors=exc.errors(),
+            db_error=None,
+            **request.form,
         )
 
-    db_error_msg = _persist_product(data)
-    if db_error_msg is not None:
-        validated_form_data: ProductFormData = {
-            "name": data.name,
-            "price": str(data.price),
-            "description": data.description or "",
-        }
-        return _render_new_product(
-            form_data=validated_form_data,
+    try:
+        create_product(data)
+        flash(message=_FLASH_PRODUCT_CREATED, category="success")
+        return redirect(location=url_for(endpoint="main.list_products"))
+    except ProductAlreadyExistsError:
+        return render_template(
+            _PRODUCT_NEW_TEMPLATE,
+            page_title=_PRODUCT_NEW_TITLE,
             errors=None,
-            db_error=db_error_msg,
+            db_error=_ERROR_PRODUCT_EXISTS,
+            **request.form,
+        )
+    except ProductPersistenceError:
+        current_app.logger.exception(_LOG_SAVE_PRODUCT_ERROR)
+        return render_template(
+            _PRODUCT_NEW_TEMPLATE,
+            page_title=_PRODUCT_NEW_TITLE,
+            errors=None,
+            db_error=_ERROR_PRODUCT_SAVE_FAILED,
+            **request.form,
         )
 
-    flash(message="Product created.", category="success")
-    return redirect(location=url_for(endpoint="main.list_products"))
 
-
-@main_bp.route(rule="/products", methods=["GET"])
+@main_bp.route(rule="/products")
 def list_products() -> ResponseReturnValue:
-    products: Sequence[Product] = Product.query.order_by(
-        Product.id.desc()
-    ).all()
-    return render_template(
-        template_name_or_list="products/list.html",
-        page_title="Products",
-        products=products,
-        csrf_token=_get_csrf_token(),
-    )
+    try:
+        products = list_products_service()
+        return render_template(
+            template_name_or_list=_PRODUCT_LIST_TEMPLATE,
+            page_title=_PRODUCT_LIST_TITLE,
+            products=products,
+        )
+    except ProductPersistenceError:
+        current_app.logger.exception(_LOG_FETCH_PRODUCTS_ERROR)
+        abort(500)
 
 
-@main_bp.route(rule="/products/<int:product_id>", methods=["GET"])
+@main_bp.route(rule="/products/<int:product_id>")
 def product_detail(product_id: int) -> ResponseReturnValue:
-    product: Product = db.get_or_404(entity=Product, ident=product_id)
-    return render_template(
-        template_name_or_list="products/detail.html",
-        page_title=product.name,
-        product=product,
-    )
+    try:
+        product = get_product(product_id)
+        return render_template(
+            template_name_or_list=_PRODUCT_DETAIL_TEMPLATE,
+            page_title=product.name,
+            product=product,
+        )
+    except ProductNotFoundError:
+        abort(404)
+    except ProductPersistenceError:
+        current_app.logger.exception(_LOG_FETCH_PRODUCT_ERROR)
+        abort(500)
 
 
-@main_bp.route(rule="/products/<int:product_id>/delete", methods=["POST"])
+@main_bp.route(rule="/products/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id: int) -> ResponseReturnValue:
-    if not _is_valid_csrf_token(value=request.form.get("csrf_token")):
-        abort(400)
-    product: Product = db.get_or_404(entity=Product, ident=product_id)
-    db.session.delete(instance=product)
-    db.session.commit()
-    flash(message="Product deleted.", category="success")
-    return redirect(location=url_for(endpoint="main.list_products"))
+    try:
+        delete_product_by_id(product_id)
+        flash(message=_FLASH_PRODUCT_DELETED, category="success")
+        return redirect(location=url_for(endpoint="main.list_products"))
+    except ProductNotFoundError:
+        abort(404)
+    except ProductPersistenceError:
+        current_app.logger.exception(_LOG_DELETE_PRODUCT_ERROR)
+        abort(500)
