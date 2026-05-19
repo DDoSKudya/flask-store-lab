@@ -1,9 +1,9 @@
+from collections.abc import Generator
+
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
-
-from collections.abc import Generator
 
 from app import create_app
 from app.extensions import Base, db

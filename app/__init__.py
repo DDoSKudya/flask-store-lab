@@ -5,7 +5,7 @@ from app.config import (
     get_secret_key,
 )
 from app.extensions import db
-from app.routes import main_bp
+from app.views import main_bp
 
 __all__ = ["create_app"]
 
