@@ -1,9 +1,11 @@
-import pytest
 from decimal import Decimal
 
+import pytest
 from pydantic import ValidationError
 
 from app.schemas import ProductCreate
+
+pytestmark = pytest.mark.unit
 
 SAMPLE_PRODUCTS: list[ProductCreate] = [
     ProductCreate(name="apple", price=Decimal("10.00"), description="desc 1"),
@@ -12,7 +14,6 @@ SAMPLE_PRODUCTS: list[ProductCreate] = [
 ]
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("product", SAMPLE_PRODUCTS)
 def test_product_create_valid(product: ProductCreate) -> None:
     from_dict = ProductCreate.model_validate(product.model_dump(mode="python"))
@@ -21,7 +22,6 @@ def test_product_create_valid(product: ProductCreate) -> None:
     assert from_dict.description == product.description
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("product", SAMPLE_PRODUCTS)
 def test_product_create_description_optional(product: ProductCreate) -> None:
     omitted = ProductCreate.model_validate(
@@ -30,7 +30,6 @@ def test_product_create_description_optional(product: ProductCreate) -> None:
     assert omitted.description is None
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("invalid_name", ["", "A"])
 def test_product_create_name_length_too_short(invalid_name: str) -> None:
     with pytest.raises(ValidationError) as exc_info:
@@ -43,7 +42,6 @@ def test_product_create_name_length_too_short(invalid_name: str) -> None:
     assert any(e["loc"] == ("name",) for e in errors)
 
 
-@pytest.mark.unit
 def test_product_create_name_length_too_long() -> None:
     name = "x" * 101
     with pytest.raises(ValidationError) as exc_info:
@@ -52,7 +50,6 @@ def test_product_create_name_length_too_long() -> None:
     assert any(e["loc"] == ("name",) for e in errors)
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("invalid_price", [Decimal("0"), Decimal("-1")])
 def test_product_create_price_must_be_positive(invalid_price: Decimal) -> None:
     with pytest.raises(ValidationError) as exc_info:
@@ -61,7 +58,6 @@ def test_product_create_price_must_be_positive(invalid_price: Decimal) -> None:
     assert any(e["loc"] == ("price",) for e in errors)
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize("product", SAMPLE_PRODUCTS)
 def test_product_create_description_too_long(product: ProductCreate) -> None:
     base = product.description or ""

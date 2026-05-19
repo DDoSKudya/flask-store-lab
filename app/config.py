@@ -3,6 +3,13 @@ from collections.abc import Callable
 from typing import Any
 
 
+def get_env_var(var_name: str) -> str:
+    try:
+        return os.environ[var_name]
+    except KeyError as exc:
+        raise ValueError(f"{var_name} is not set") from exc
+
+
 def check_key(
     message: str,
 ) -> Callable[[Callable[..., str | None]], Callable[..., str]]:
@@ -20,9 +27,9 @@ def check_key(
 
 @check_key("SECRET_KEY is not set")
 def get_secret_key() -> str | None:
-    return os.getenv("SECRET_KEY")
+    return get_env_var("SECRET_KEY")
 
 
 @check_key("DATABASE_URL is not set")
 def get_database_url() -> str | None:
-    return os.getenv("DATABASE_URL")
+    return get_env_var("DATABASE_URL")

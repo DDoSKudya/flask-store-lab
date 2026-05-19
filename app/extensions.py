@@ -2,7 +2,6 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from sqlalchemy import Engine, MetaData, create_engine
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import (
     DeclarativeBase,
     Session,
@@ -40,7 +39,7 @@ class Database:
         try:
             yield s
             s.commit()
-        except SQLAlchemyError:
+        except Exception:
             s.rollback()
             raise
         finally:
