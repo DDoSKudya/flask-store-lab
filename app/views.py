@@ -1,4 +1,5 @@
-from enum import StrEnum
+from enum import Enum, StrEnum
+from http import HTTPStatus
 
 from flask import (
     Blueprint,
@@ -19,6 +20,7 @@ from app.services.products import (
     ProductAlreadyExistsError,
     ProductNotFoundError,
     ProductPersistenceError,
+    count_products,
     create_product,
     get_product,
 )
@@ -50,13 +52,17 @@ class FlashMessage(StrEnum):
 
 class LogMessage(StrEnum):
     SAVE_PRODUCT = "Error while saving product to database"
-    FETCH_PRODUCTS = "Error while fetching products from database"
-    FETCH_PRODUCT = "Error while fetching product from database"
-    DELETE_PRODUCT = "Error while deleting product from database"
+    PERSISTENCE_FAILURE = "Product persistence failure"
 
 
 class HealthResponse(StrEnum):
     OK = "OK"
+
+
+class PaginationParams(Enum):
+    PAGE = 1
+    PER_PAGE = 10
+    MAX_PER_PAGE = 10
 
 
 main_bp: Blueprint = Blueprint(name="main", import_name=__name__)
@@ -99,8 +105,8 @@ def create_product_handler() -> ResponseReturnValue:
         )
 
     try:
-        with db.session_scope() as session:
-            create_product(session, data)
+        with db.session_scope():
+            create_product(data)
         flash(message=FlashMessage.PRODUCT_CREATED.value, category="success")
         return redirect(location=url_for(endpoint="main.list_products"))
     except ProductAlreadyExistsError as exc:
@@ -124,45 +130,76 @@ def create_product_handler() -> ResponseReturnValue:
 
 @main_bp.route(rule="/products")
 def list_products() -> ResponseReturnValue:
-    try:
-        with db.session_scope() as session:
-            products = list_products_service(session)
-        return render_template(
-            template_name_or_list=ViewTemplate.PRODUCT_LIST.value,
-            page_title=PageTitle.PRODUCT_LIST.value,
-            products=products,
-        )
-    except ProductPersistenceError:
-        current_app.logger.exception(LogMessage.FETCH_PRODUCTS.value)
-        abort(500)
+    page = request.args.get("page", type=int)
+    if page is None or page < 1:
+        page = PaginationParams.PAGE.value
+    per_page = PaginationParams.PER_PAGE.value
+
+    with db.session_scope():
+        total = count_products()
+        total_pages = (total + per_page - 1) // per_page if total else 0
+        if total_pages and page > total_pages:
+            page = total_pages
+        products = list_products_service(page=page, per_page=per_page)
+
+    has_prev = page > 1
+    has_next = page < total_pages
+    return render_template(
+        template_name_or_list=ViewTemplate.PRODUCT_LIST.value,
+        page_title=PageTitle.PRODUCT_LIST.value,
+        products=products,
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages,
+        has_prev=has_prev,
+        has_next=has_next,
+    )
 
 
 @main_bp.route(rule="/products/<int:product_id>")
 def product_detail(product_id: int) -> ResponseReturnValue:
     try:
-        with db.session_scope() as session:
-            product = get_product(session, product_id)
-        return render_template(
-            template_name_or_list=ViewTemplate.PRODUCT_DETAIL.value,
-            page_title=product.name,
-            product=product,
-        )
+        with db.session_scope():
+            product = get_product(product_id)
     except ProductNotFoundError:
         abort(404)
-    except ProductPersistenceError:
-        current_app.logger.exception(LogMessage.FETCH_PRODUCT.value)
-        abort(500)
+
+    return render_template(
+        template_name_or_list=ViewTemplate.PRODUCT_DETAIL.value,
+        page_title=product.name,
+        product=product,
+    )
 
 
 @main_bp.route(rule="/products/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id: int) -> ResponseReturnValue:
     try:
-        with db.session_scope() as session:
-            delete_product_by_id(session, product_id)
-        flash(message=FlashMessage.PRODUCT_DELETED.value, category="success")
-        return redirect(location=url_for(endpoint="main.list_products"))
+        with db.session_scope():
+            delete_product_by_id(product_id)
     except ProductNotFoundError:
         abort(404)
-    except ProductPersistenceError:
-        current_app.logger.exception(LogMessage.DELETE_PRODUCT.value)
-        abort(500)
+
+    flash(message=FlashMessage.PRODUCT_DELETED.value, category="success")
+    return redirect(location=url_for(endpoint="main.list_products"))
+
+
+@main_bp.errorhandler(ProductPersistenceError)
+def handle_product_persistence_error(
+    error: ProductPersistenceError,
+) -> tuple[str, int]:
+    """
+    Handle uncaught product persistence errors from view handlers.
+
+    Logs the underlying failure and returns a generic 500 response body and status code
+    to the client.
+
+    Args:
+        error:
+            The domain-level persistence error raised during request handling.
+
+    Returns:
+        A tuple containing the error message body and the HTTP 500 status code.
+    """
+    current_app.logger.exception(LogMessage.PERSISTENCE_FAILURE.value)
+    return str(error), HTTPStatus.INTERNAL_SERVER_ERROR

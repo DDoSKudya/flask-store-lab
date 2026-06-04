@@ -19,28 +19,17 @@ def app(
     app = create_app()
     app.config["TESTING"] = True
 
-    bootstrap_session = db.session()
-    engine = bootstrap_session.get_bind()
-    bootstrap_session.close()
-    db.remove_session()
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=db.engine)
 
     yield app
 
-    Base.metadata.drop_all(bind=engine)
-    db.remove_session()
+    Base.metadata.drop_all(bind=db.engine)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def db_session(app: Flask) -> Generator[Session, None, None]:
-    session = db.session()
-    try:
+    with db.session_scope() as session:
         yield session
-    finally:
-        if session.in_transaction():
-            session.rollback()
-        session.close()
-        db.remove_session()
 
 
 @pytest.fixture

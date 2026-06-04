@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 import app.models  # noqa: F401  # pyright: ignore[reportUnusedImport]
-from app.config import get_database_url
+from app.config import get_env_var
 from app.extensions import db
 
 load_dotenv()
@@ -26,7 +26,7 @@ if config.config_file_name is not None:
 target_metadata = db.metadata
 
 
-database_url = get_database_url()
+database_url = get_env_var("DATABASE_URL")
 config.set_main_option("sqlalchemy.url", database_url)
 
 # other values from the config, defined by the needs of env.py,
