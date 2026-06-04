@@ -23,7 +23,6 @@ repos:
         files: ^(app/|wsgi\.py$)
         additional_dependencies:
           - setuptools==82.0.1
-          - Flask==3.1.3
           - SQLAlchemy==2.0.49
           - Flask-SQLAlchemy==3.1.1
           - alembic==1.18.4

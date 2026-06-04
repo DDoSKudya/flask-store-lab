@@ -73,6 +73,70 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% if total_pages > 1 %}
+                <div class="card-footer bg-white border-top py-3">
+                    <div
+                        class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3"
+                    >
+                        <p class="text-secondary small mb-0">
+                            Showing page
+                            <span class="fw-semibold text-body"
+                                >{{ page }}</span
+                            >
+                            of
+                            <span class="fw-semibold text-body"
+                                >{{ total_pages }}</span
+                            >
+                            ·
+                            <span class="fw-semibold text-body"
+                                >{{ total }}</span
+                            >
+                            products
+                        </p>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li
+                                class="page-item {% if not has_prev %}disabled{% endif %}"
+                            >
+                                {% if has_prev %}
+                                <a
+                                    class="page-link"
+                                    href="{{ url_for('main.list_products', page=page - 1) }}"
+                                    aria-label="Previous page"
+                                    >‹ Prev</a
+                                >
+                                {% else %}
+                                <span class="page-link">‹ Prev</span>
+                                {% endif %}
+                            </li>
+                            {% for p in range(1, total_pages + 1) %}
+                            <li
+                                class="page-item {% if p == page %}active{% endif %}"
+                            >
+                                <a
+                                    class="page-link"
+                                    href="{{ url_for('main.list_products', page=p) }}"
+                                    >{{ p }}</a
+                                >
+                            </li>
+                            {% endfor %}
+                            <li
+                                class="page-item {% if not has_next %}disabled{% endif %}"
+                            >
+                                {% if has_next %}
+                                <a
+                                    class="page-link"
+                                    href="{{ url_for('main.list_products', page=page + 1) }}"
+                                    aria-label="Next page"
+                                    >Next ›</a
+                                >
+                                {% else %}
+                                <span class="page-link">Next ›</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% else %}

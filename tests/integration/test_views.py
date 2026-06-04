@@ -1,32 +1,30 @@
+from http import HTTPStatus
+
 import pytest
 
+from app.services.products import ProductPersistenceError
+
 pytestmark = pytest.mark.integration
-
-
-HTTP_OK = 200
-HTTP_REDIRECT = 302
-HTTP_NOT_FOUND = 404
-HTTP_INTERNAL_SERVER_ERROR = 500
 
 
 def test_index(client) -> None:
     response = client.get("/")
     response_text = response.get_data(as_text=True)
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert "<title>Home</title>" in response_text
     assert "flask-store-lab" in response_text
 
 
 def test_health(client) -> None:
     response = client.get("/health")
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert response.get_data(as_text=True) == "OK"
 
 
 def test_new_product(client) -> None:
     response = client.get("/products/new")
     response_text = response.get_data(as_text=True)
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert "<title>New product</title>" in response_text
     assert 'name="name"' in response_text
     assert 'name="price"' in response_text
@@ -47,7 +45,7 @@ def test_new_product(client) -> None:
 def test_create_product_redirects_on_success(client, data) -> None:
     response = client.post("/products", data=data, follow_redirects=True)
     response_text = response.get_data(as_text=True)
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert "<title>Products</title>" in response_text
     assert data["name"] in response_text
 
@@ -75,7 +73,7 @@ def test_create_product_with_invalid_data(
     response = client.post("/products", data=data)
     response_text = response.get_data(as_text=True)
 
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert "Please fix the following" in response_text
     assert expected_error in response_text
 
@@ -87,12 +85,12 @@ def test_create_product_with_duplicate_name(client) -> None:
         "description": "first product",
     }
     first_response = client.post("/products", data=payload)
-    assert first_response.status_code == HTTP_REDIRECT
+    assert first_response.status_code == HTTPStatus.FOUND
 
     second_response = client.post("/products", data=payload)
     second_response_text = second_response.get_data(as_text=True)
 
-    assert second_response.status_code == HTTP_OK
+    assert second_response.status_code == HTTPStatus.OK
     assert "Product with this name already exists." in second_response_text
     assert 'value="duplicate-name"' in second_response_text
 
@@ -121,9 +119,42 @@ def test_get_list_products(client, data) -> None:
     client.post("/products", data=data)
     response = client.get("/products")
     response_text = response.get_data(as_text=True)
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert "<title>Products</title>" in response_text
     assert data["name"] in response_text
+
+
+def test_list_products_pagination_separate_pages(client) -> None:
+    for index in range(11):
+        client.post(
+            "/products",
+            data={"name": f"item-{index}", "price": "10.00"},
+        )
+
+    first_page = client.get("/products?page=1")
+    second_page = client.get("/products?page=2")
+
+    assert first_page.status_code == HTTPStatus.OK
+    assert second_page.status_code == HTTPStatus.OK
+    first_text = first_page.get_data(as_text=True)
+    second_text = second_page.get_data(as_text=True)
+    assert "item-10" in first_text
+    assert "item-0" in second_text
+    assert "item-0" not in first_text
+    assert "item-10" not in second_text
+
+
+def test_list_products_returns_500_on_persistence_error(
+    client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def raise_persistence_error() -> int:
+        raise ProductPersistenceError()
+
+    monkeypatch.setattr("app.views.count_products", raise_persistence_error)
+
+    response = client.get("/products")
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 @pytest.mark.parametrize(
@@ -150,7 +181,7 @@ def test_get_product_detail_by_id(client, data) -> None:
     client.post("/products", data=data)
     response = client.get("/products/1")
     response_text = response.get_data(as_text=True)
-    assert response.status_code == HTTP_OK
+    assert response.status_code == HTTPStatus.OK
     assert f"<title>{data['name']}</title>" in response_text
     assert data["name"] in response_text
     assert data["price"] in response_text
@@ -171,7 +202,7 @@ def test_delete_product_by_id(client, data) -> None:
     client.post("/products", data=data)
     delete_response = client.delete("/products/1")
     response = client.get("/products")
-    assert delete_response.status_code == HTTP_REDIRECT
+    assert delete_response.status_code == HTTPStatus.FOUND
     assert (
         "You should be redirected automatically to the target URL"
         in delete_response.get_data(as_text=True)
@@ -181,11 +212,11 @@ def test_delete_product_by_id(client, data) -> None:
 
 def test_get_product_not_found(client) -> None:
     response = client.get("/products/1")
-    assert response.status_code == HTTP_NOT_FOUND
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert "Not Found" in response.get_data(as_text=True)
 
 
 def test_delete_product_not_found(client) -> None:
     response = client.delete("/products/9999")
-    assert response.status_code == HTTP_NOT_FOUND
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert "Not Found" in response.get_data(as_text=True)
