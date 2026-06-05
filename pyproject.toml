@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flask-store-lab"
-version = "1.0.0"
+version = "1.1.0"
 description = "Учебный Flask-проект: каталог товаров с формами на Jinja2, валидацией через Pydantic, хранением данных в SQLite через SQLAlchemy и миграциями Alembic."
 readme = "README.md"
 license = { text = "MIT" }

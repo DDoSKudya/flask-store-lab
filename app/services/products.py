@@ -83,7 +83,7 @@ def list_products(page: int, per_page: int) -> Sequence[Product]:
         page:
             One-based page index used to compute the lower bound of the row window.
         per_page:
-            Maximum number of products per page; constrained to the range 1–10.
+            Maximum number of products per page; constrained to the range 1-10.
 
     Returns:
         A sequence of products for the requested page, ordered by descending ID.

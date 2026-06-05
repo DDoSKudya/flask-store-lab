@@ -62,7 +62,6 @@ class HealthResponse(StrEnum):
 class PaginationParams(Enum):
     PAGE = 1
     PER_PAGE = 10
-    MAX_PER_PAGE = 10
 
 
 main_bp: Blueprint = Blueprint(name="main", import_name=__name__)
